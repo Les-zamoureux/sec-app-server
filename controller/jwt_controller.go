@@ -5,19 +5,21 @@ import (
 	"sec-app-server/model"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
 
 var jwtKey = []byte("secret_jwt_key")
 
 type Credentials struct {
-	Username string `json:"username"`
+	Mail string `json:"email"`
 	Password string `json:"password"`
 }
 
-func EncodeJWT(username string) (string, error) {
-	isUserAdmin, err := model.IsUserAdmin(username)
+func EncodeJWT(mail string) (string, error) {
+	isUserAdmin, err := model.IsUserAdmin(mail)
 	if err != nil {
+		fmt.Println("bug here : ", err)
 		return "", err
 	}
 
@@ -30,7 +32,7 @@ func EncodeJWT(username string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"username": username,
+		"mail": mail,
 		"exp":      time.Now().Add(24 * time.Hour).Unix(),
 		"role":     role,
 	})
@@ -50,7 +52,7 @@ func DecodeJWT(tokenString string) (*jwt.Token, bool, error) {
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		username := claims["username"].(string)
+		username := claims["mail"].(string)
 		isUserAdmin, err := model.IsUserAdmin(username)
 		if err != nil {
 			return nil, false, err
@@ -59,4 +61,29 @@ func DecodeJWT(tokenString string) (*jwt.Token, bool, error) {
 	}
 
 	return nil, false,  fmt.Errorf("invalid token or claims")
+}
+
+func GetUserFromGinContext(c *gin.Context) (string, error) {
+	tokenString := c.GetHeader("Authorization")
+	if tokenString == "" {
+		return "", fmt.Errorf("authorization header is missing")
+	}
+
+	tokenString = tokenString[len("Bearer "):] // Remove "Bearer " prefix
+
+	token, isUserAdmin, err := DecodeJWT(tokenString)
+	if err != nil {
+		return "", err
+	}
+
+	if !isUserAdmin {
+		return "", fmt.Errorf("user is not an admin")
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		username := claims["mail"].(string)
+		return username, nil
+	}
+
+	return "", fmt.Errorf("invalid token or claims")
 }
