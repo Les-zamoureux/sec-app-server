@@ -15,6 +15,8 @@ import (
 	m "sec-app-server/middlewares"
 	mod "sec-app-server/model"
 	"sec-app-server/utils"
+
+	gomail "gopkg.in/mail.v2"
 )
 
 func main() {
@@ -45,6 +47,28 @@ func main() {
 	}
 
 	db.Test()
+
+	message := gomail.NewMessage()
+	_ = message
+
+	// // Set email headers
+	// message.SetHeader("From", "youremail@email.com")
+	// message.SetHeader("To", "recipient1@email.com")
+	// message.SetHeader("Subject", "Hello from the Mailtrap team")
+
+	// // Set email body
+	// message.SetBody("text/plain", "This is the Test Body")
+
+	// // Set up the SMTP dialer
+	// dialer := gomail.NewDialer("sandbox.smtp.mailtrap.io", 25, "71041a54a6a51a", "736a95c6f7a705")
+
+	// // Send the email
+	// if err := dialer.DialAndSend(message); err != nil {
+	// 	fmt.Println("Error:", err)
+	// 	panic(err)
+	// } else {
+	// 	fmt.Println("Email sent successfully!")
+	// }
 
 	r.Run(":8080")
 }

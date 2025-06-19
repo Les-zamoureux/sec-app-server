@@ -87,7 +87,7 @@ func AuthenticateUser(email, password string) (*User, error) {
 
 func IsUserAdmin(email string) (bool, error) {
 	var isAdmin bool
-	err := db.DB.QueryRow("SELECT is_admin FROM users WHERE email = $1", email).Scan(&isAdmin)
+	err := db.DB.QueryRow("SELECT is_admin FROM users WHERE email = $1", utils.HashString(email)).Scan(&isAdmin)
 	if err != nil {
 		return false, err
 	}
