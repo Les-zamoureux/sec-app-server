@@ -13,7 +13,7 @@ import (
 var jwtKey = []byte("secret_jwt_key")
 
 type Credentials struct {
-	Mail string `json:"email"`
+	Mail     string `json:"email"`
 	Password string `json:"password"`
 }
 
@@ -34,8 +34,8 @@ func EncodeJWT(mail string) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"mail": utils.HashString(mail),
-		"exp":      time.Now().Add(24 * time.Hour).Unix(),
-		"role":     role,
+		"exp":  time.Now().Add(24 * time.Hour).Unix(),
+		"role": role,
 	})
 	return token.SignedString(jwtKey)
 }
@@ -61,7 +61,7 @@ func DecodeJWT(tokenString string) (*jwt.Token, bool, error) {
 		return token, isUserAdmin, nil
 	}
 
-	return nil, false,  fmt.Errorf("invalid token or claims")
+	return nil, false, fmt.Errorf("invalid token or claims")
 }
 
 func GetUserFromGinContext(c *gin.Context) (string, error) {

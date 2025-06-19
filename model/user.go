@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"sec-app-server/db"
+	mailcontroller "sec-app-server/mail_controller"
 	"sec-app-server/utils"
 )
 
@@ -19,16 +20,18 @@ type User struct {
 
 func RegisterUser(username, email, password string) (*User, error) {
 	var user User
-	sql, err := db.DB.Prepare("INSERT INTO users (username, email, password, is_admin) VALUES ($1, $2, $3, $4)")
+	token := utils.GenerateRandomString(20) // Generate a random verification token
+	sql, err := db.DB.Prepare("INSERT INTO users (username, email, password, is_admin, verification_token, creation_date) VALUES ($1, $2, $3, $4, $5, $6)")
 	if err != nil {
 		fmt.Println("Error registering user:", err)
 		return nil, err
 	}
-	_, err = sql.Exec(username, utils.HashString(email), utils.HashString(password), false)
+	_, err = sql.Exec(username, utils.HashString(email), utils.HashString(password), false, token, utils.GetCurrentDate())
 	if err != nil {
 		fmt.Println("Error executing user registration:", err)
 		return nil, err
 	}
+	mailcontroller.SendMail(email, "Account Verification", fmt.Sprintf("Please verify your account by clicking the following link: %s/verify-account/%s", utils.ClientUrl, token))
 	return &user, nil
 }
 
@@ -87,7 +90,7 @@ func AuthenticateUser(email, password string) (*User, error) {
 
 func IsUserAdmin(email string) (bool, error) {
 	var isAdmin bool
-	err := db.DB.QueryRow("SELECT is_admin FROM users WHERE email = $1", utils.HashString(email)).Scan(&isAdmin)
+	err := db.DB.QueryRow("SELECT is_admin FROM users WHERE email = $1", email).Scan(&isAdmin)
 	if err != nil {
 		return false, err
 	}
@@ -110,8 +113,8 @@ func AddProductToCart(userID, productID string, quantity int) error {
 
 func OrderCart(userID string) error {
 	// get all products in the cart with the quantity
-	products := []struct{
-		product *Product
+	products := []struct {
+		product  *Product
 		quantity int
 	}{}
 
@@ -128,15 +131,15 @@ func OrderCart(userID string) error {
 			fmt.Println("Error scanning cart item:", err)
 			return err
 		}
-		
+
 		product, err := GetProductByID(productID)
 		if err != nil {
 			fmt.Println("Error fetching product:", err)
 			return err
 		}
-		
-		products = append(products, struct{
-			product *Product
+
+		products = append(products, struct {
+			product  *Product
 			quantity int
 		}{product: product, quantity: quantity})
 	}
@@ -185,4 +188,3 @@ func OrderCart(userID string) error {
 	}
 	return nil
 }
-

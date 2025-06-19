@@ -12,11 +12,10 @@ import (
 
 	"sec-app-server/controller"
 	"sec-app-server/db"
+	mailcontroller "sec-app-server/mail_controller"
 	m "sec-app-server/middlewares"
 	mod "sec-app-server/model"
 	"sec-app-server/utils"
-
-	gomail "gopkg.in/mail.v2"
 )
 
 func main() {
@@ -27,8 +26,11 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	origins := os.Getenv("CLIENT_URL")
+	mailcontroller.InitMailSystem()
 
+	utils.ClientUrl = os.Getenv("CLIENT_URL")
+
+	origins := utils.ClientUrl
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{origins},
 		AllowMethods:     []string{"*"},
@@ -47,28 +49,6 @@ func main() {
 	}
 
 	db.Test()
-
-	message := gomail.NewMessage()
-	_ = message
-
-	// // Set email headers
-	// message.SetHeader("From", "youremail@email.com")
-	// message.SetHeader("To", "recipient1@email.com")
-	// message.SetHeader("Subject", "Hello from the Mailtrap team")
-
-	// // Set email body
-	// message.SetBody("text/plain", "This is the Test Body")
-
-	// // Set up the SMTP dialer
-	// dialer := gomail.NewDialer("sandbox.smtp.mailtrap.io", 25, "71041a54a6a51a", "736a95c6f7a705")
-
-	// // Send the email
-	// if err := dialer.DialAndSend(message); err != nil {
-	// 	fmt.Println("Error:", err)
-	// 	panic(err)
-	// } else {
-	// 	fmt.Println("Email sent successfully!")
-	// }
 
 	r.Run(":8080")
 }
