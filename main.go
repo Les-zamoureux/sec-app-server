@@ -29,12 +29,8 @@ func main() {
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{origins},
 		AllowMethods:     []string{"*"},
-		AllowHeaders:     []string{"Origin"},
-		ExposeHeaders:    []string{"Content-Length"},
+		AllowHeaders:     []string{"*"},
 		AllowCredentials: true,
-		AllowOriginFunc: func(origin string) bool {
-			return origin == "https://github.com"
-		},
 	}))
 
 	initUserRoutes(r)
