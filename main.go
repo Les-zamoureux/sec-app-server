@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 
 	"sec-app-server/controller"
 	"sec-app-server/db"
@@ -16,17 +19,29 @@ import (
 func main() {
 	r := gin.Default()
 
-	r.GET("/test", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"prenom_de_merde": "Ian",
-		})
-	})
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	origins := os.Getenv("CLIENT_URL")
+
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{origins},
+		AllowMethods:     []string{"*"},
+		AllowHeaders:     []string{"Origin"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		AllowOriginFunc: func(origin string) bool {
+			return origin == "https://github.com"
+		},
+	}))
 
 	initUserRoutes(r)
 	initProductRoutes(r)
 	initFAQRoutes(r)
 
-	err := db.InitDB()
+	err = db.InitDB()
 
 	if err != nil {
 		log.Fatal("Failed to connect to the database:", err)
@@ -39,8 +54,6 @@ func main() {
 
 func initUserRoutes(r *gin.Engine) {
 	r.POST("/register", func(c *gin.Context) {
-		// password must be both alpha and numeric, between 6 and 100 characters
-		// email must be a valid email format
 		var creds struct {
 			Username string `json:"username" binding:"required"`
 			Mail     string `json:"email" binding:"required,email"`
@@ -118,7 +131,7 @@ func initUserRoutes(r *gin.Engine) {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"message": "User removed successfully"})
-	}));
+	}))
 
 	r.POST("/cart/add/", m.Authenticated(func(c *gin.Context) {
 		var prodQuant struct {
@@ -130,7 +143,7 @@ func initUserRoutes(r *gin.Engine) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 			return
 		}
-		
+
 		if prodQuant.ProductID == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Product ID is required"})
 			return
