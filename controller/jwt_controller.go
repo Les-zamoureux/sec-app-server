@@ -18,7 +18,7 @@ type Credentials struct {
 }
 
 func EncodeJWT(mail string) (string, error) {
-	isUserAdmin, err := model.IsUserAdmin(mail)
+	isUserAdmin, err := model.IsUserAdmin(utils.HashString(mail))
 	if err != nil {
 		fmt.Println("bug here : ", err)
 		return "", err
