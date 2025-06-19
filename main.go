@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"regexp"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -131,7 +130,7 @@ func initUserRoutes(r *gin.Engine) {
 
 		}
 		c.JSON(http.StatusOK, gin.H{
-			"token": tokenString,
+			"token":    tokenString,
 			"username": user.Username,
 			"is_admin": user.IsAdmin,
 		})
@@ -158,11 +157,11 @@ func initUserRoutes(r *gin.Engine) {
 		c.JSON(http.StatusOK, gin.H{"message": "User removed successfully"})
 	}))
 
-	r.GET("/user/me", m.Authenticated(func (c *gin.Context) {
+	r.GET("/user/me", m.Authenticated(func(c *gin.Context) {
 		userMail, err := controller.GetUserFromGinContext(c)
 		fmt.Println("User email from context:", userMail)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{ "error": "Error getting the user"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting the user"})
 			return
 		}
 
@@ -173,7 +172,7 @@ func initUserRoutes(r *gin.Engine) {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{ "username": user.Username, "is_admin": user.IsAdmin })
+		c.JSON(http.StatusOK, gin.H{"username": user.Username, "is_admin": user.IsAdmin})
 	}))
 
 	r.POST("/cart/add/", m.Authenticated(func(c *gin.Context) {
