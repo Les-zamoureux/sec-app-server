@@ -14,6 +14,7 @@ import (
 	"sec-app-server/db"
 	m "sec-app-server/middlewares"
 	mod "sec-app-server/model"
+	"sec-app-server/utils"
 )
 
 func main() {
@@ -60,20 +61,10 @@ func initUserRoutes(r *gin.Engine) {
 			return
 		}
 
-		// // Validate email format using the net/mail package
-		// mailRegex := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
-		// if !regexp.MustCompile(mailRegex).MatchString(creds.Mail) {
-		// 	c.JSON(http.StatusBadRequest, gin.H{"format-error": "email"})
-		// 	return
-		// }
-
-		// // This regex checks for at least one lowercase letter, one uppercase letter, one digit, and a minimum length of 8 characters.
-		// // regex without lookaheads workarounds the issue of not being able to use lookaheads in some regex engines.
-		// passwordRegex := `^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$`
-		// if !regexp.MustCompile(passwordRegex).MatchString(creds.Password) {
-		// 	c.JSON(http.StatusBadRequest, gin.H{"format-error": "password"})
-		// 	return
-		// }
+		if !utils.PasswordValidator(creds.Password) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Password must be at least 8 characters long, contain at least one uppercase letter, one lowercase letter, one number, and one special character"})
+			return
+		}
 
 		usernameExists, emailExists, err := mod.CheckUserExists(creds.Username, creds.Mail)
 		if err != nil {
