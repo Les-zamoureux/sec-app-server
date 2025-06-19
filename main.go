@@ -52,13 +52,15 @@ func initUserRoutes(r *gin.Engine) {
 	r.POST("/register", func(c *gin.Context) {
 		var creds struct {
 			Username string `json:"username" binding:"required"`
-			Mail     string `json:"email" binding:"required,email"`
-			Password string `json:"password" binding:"required,min=6,max=100,alphanum"`
+			Mail     string `json:"email" binding:"required"`
+			Password string `json:"password" binding:"required"`
 		}
 		if err := c.ShouldBindJSON(&creds); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 			return
 		}
+
+		// regexp.Match(`^[a-zA-Z0-9_]{3,20}$`, []byte(creds.Username))
 
 		usernameExists, emailExists, err := mod.CheckUserExists(creds.Username, creds.Mail)
 		if err != nil {

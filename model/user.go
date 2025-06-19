@@ -50,7 +50,7 @@ func CheckUserExists(username, email string) (bool, bool, error) {
 	var usernameExists bool
 	var emailExists bool
 	err := db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)", utils.HashString(email)).Scan(&emailExists)
-	err = db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE email = $1 or username = $2)", username).Scan(&usernameExists)
+	err = db.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)", username).Scan(&usernameExists)
 	if err != nil {
 		fmt.Println("Error checking if user exists:", err)
 		return false, false, err
