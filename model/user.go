@@ -32,6 +32,23 @@ func RegisterUser(username, email, password string) (*User, error) {
 	return &user, nil
 }
 
+func GetUserByEmail(email string) (*User, error) {
+	var username string
+	var isAdmin bool
+	fmt.Println("Fetching user by email:", email)
+	err := db.DB.QueryRow("SELECT username, is_admin FROM users WHERE email=$1", email).Scan(&username, &isAdmin)
+
+	if err != nil {
+		fmt.Println("Error fetching user by email:", err)
+		return nil, err
+	}
+
+	return &User{
+		Username: username,
+		IsAdmin:  isAdmin,
+	}, nil
+}
+
 func RemoveUser(email string) error {
 	sql, err := db.DB.Prepare("DELETE FROM users WHERE email = $1")
 	if err != nil {
@@ -70,7 +87,7 @@ func AuthenticateUser(email, password string) (*User, error) {
 
 func IsUserAdmin(email string) (bool, error) {
 	var isAdmin bool
-	err := db.DB.QueryRow("SELECT is_admin FROM users WHERE email = $1", utils.HashString(email)).Scan(&isAdmin)
+	err := db.DB.QueryRow("SELECT is_admin FROM users WHERE email = $1", email).Scan(&isAdmin)
 	if err != nil {
 		return false, err
 	}
@@ -168,3 +185,4 @@ func OrderCart(userID string) error {
 	}
 	return nil
 }
+

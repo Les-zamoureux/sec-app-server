@@ -61,19 +61,20 @@ func initUserRoutes(r *gin.Engine) {
 			return
 		}
 
-		// Validate email format using the net/mail package
-		mailRegex := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
-		if !regexp.MustCompile(mailRegex).MatchString(creds.Mail) {
-			c.JSON(http.StatusBadRequest, gin.H{"format-error": "email"})
-			return
-		}
+		// // Validate email format using the net/mail package
+		// mailRegex := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
+		// if !regexp.MustCompile(mailRegex).MatchString(creds.Mail) {
+		// 	c.JSON(http.StatusBadRequest, gin.H{"format-error": "email"})
+		// 	return
+		// }
 
-		// This regex checks for at least one lowercase letter, one uppercase letter, one digit, and a minimum length of 8 characters.
-		passwordRegex := `^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$`
-		if !regexp.MustCompile(passwordRegex).MatchString(creds.Password) {
-			c.JSON(http.StatusBadRequest, gin.H{"format-error": "password"})
-			return
-		}
+		// // This regex checks for at least one lowercase letter, one uppercase letter, one digit, and a minimum length of 8 characters.
+		// // regex without lookaheads workarounds the issue of not being able to use lookaheads in some regex engines.
+		// passwordRegex := `^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$`
+		// if !regexp.MustCompile(passwordRegex).MatchString(creds.Password) {
+		// 	c.JSON(http.StatusBadRequest, gin.H{"format-error": "password"})
+		// 	return
+		// }
 
 		usernameExists, emailExists, err := mod.CheckUserExists(creds.Username, creds.Mail)
 		if err != nil {
@@ -129,7 +130,11 @@ func initUserRoutes(r *gin.Engine) {
 			return
 
 		}
-		c.JSON(http.StatusOK, gin.H{"token": tokenString})
+		c.JSON(http.StatusOK, gin.H{
+			"token": tokenString,
+			"username": user.Username,
+			"is_admin": user.IsAdmin,
+		})
 	})
 
 	r.POST("/disconnect", func(c *gin.Context) {
@@ -151,6 +156,24 @@ func initUserRoutes(r *gin.Engine) {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"message": "User removed successfully"})
+	}))
+
+	r.GET("/user/me", m.Authenticated(func (c *gin.Context) {
+		userMail, err := controller.GetUserFromGinContext(c)
+		fmt.Println("User email from context:", userMail)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{ "error": "Error getting the user"})
+			return
+		}
+
+		user, err := mod.GetUserByEmail(userMail)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{ "username": user.Username, "is_admin": user.IsAdmin })
 	}))
 
 	r.POST("/cart/add/", m.Authenticated(func(c *gin.Context) {

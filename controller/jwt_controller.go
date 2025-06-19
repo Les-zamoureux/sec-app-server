@@ -3,6 +3,7 @@ package controller
 import (
 	"fmt"
 	"sec-app-server/model"
+	"sec-app-server/utils"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -32,7 +33,7 @@ func EncodeJWT(mail string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"mail": mail,
+		"mail": utils.HashString(mail),
 		"exp":      time.Now().Add(24 * time.Hour).Unix(),
 		"role":     role,
 	})

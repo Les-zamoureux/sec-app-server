@@ -37,6 +37,7 @@ func Authenticated(handler func(c *gin.Context)) func(c *gin.Context) {
 		}
 		token, _, err := controller.DecodeJWT(strings.Split(c.GetHeader("Authorization"), " ")[1])
 		if err != nil || token == nil {
+			fmt.Println("Error decoding JWT:", err)
 			c.JSON(401, gin.H{"error": "Unauthorized"})
 			c.Abort()
 			return
