@@ -60,15 +60,23 @@ func initUserRoutes(r *gin.Engine) {
 			return
 		}
 
-		exists, err := mod.CheckUserExists(creds.Mail)
+		usernameExists, emailExists, err := mod.CheckUserExists(creds.Username, creds.Mail)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check user existence"})
 			return
 		}
-		if exists {
-			c.JSON(http.StatusConflict, gin.H{"error": "User already exists"})
+		if usernameExists && emailExists {
+			c.JSON(http.StatusConflict, gin.H{"error": "already-used:username&email"})
+		}
+		if usernameExists {
+			c.JSON(http.StatusConflict, gin.H{"error": "already-used:username"})
 			return
 		}
+		if emailExists {
+			c.JSON(http.StatusConflict, gin.H{"error": "already-used:email"})
+			return
+		}
+
 		user, err := mod.RegisterUser(creds.Username, creds.Mail, creds.Password)
 
 		if err != nil {
