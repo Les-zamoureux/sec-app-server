@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -60,7 +61,19 @@ func initUserRoutes(r *gin.Engine) {
 			return
 		}
 
-		// regexp.Match(`^[a-zA-Z0-9_]{3,20}$`, []byte(creds.Username))
+		// Validate email format using the net/mail package
+		mailRegex := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
+		if !regexp.MustCompile(mailRegex).MatchString(creds.Mail) {
+			c.JSON(http.StatusBadRequest, gin.H{"format-error": "email"})
+			return
+		}
+
+		// This regex checks for at least one lowercase letter, one uppercase letter, one digit, and a minimum length of 8 characters.
+		passwordRegex := `^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$`
+		if !regexp.MustCompile(passwordRegex).MatchString(creds.Password) {
+			c.JSON(http.StatusBadRequest, gin.H{"format-error": "password"})
+			return
+		}
 
 		usernameExists, emailExists, err := mod.CheckUserExists(creds.Username, creds.Mail)
 		if err != nil {
@@ -69,6 +82,7 @@ func initUserRoutes(r *gin.Engine) {
 		}
 		if usernameExists && emailExists {
 			c.JSON(http.StatusConflict, gin.H{"error": "already-used:username&email"})
+			return
 		}
 		if usernameExists {
 			c.JSON(http.StatusConflict, gin.H{"error": "already-used:username"})
