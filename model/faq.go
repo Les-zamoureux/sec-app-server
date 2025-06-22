@@ -31,6 +31,17 @@ func GetFAQs() ([]FAQ, error) {
 	return faqs, nil
 }
 
+func GetFAQ(id string) (*FAQ, error) {
+	var faq FAQ
+	err := db.DB.QueryRow("SELECT * FROM faq_question WHERE id=$1", id).Scan(&faq);
+	if err != nil {
+		fmt.Println("Error fetching FAQs:", err)
+		return nil, err
+	}
+
+	return &faq, nil
+}
+
 func AddFAQ(question, answer string) error {
 	sql, err := db.DB.Prepare("INSERT INTO faq_question (question, answer) VALUES ($1, $2)")
 	if err != nil {

@@ -64,7 +64,7 @@ func DecodeJWT(tokenString string) (*jwt.Token, bool, error) {
 	return nil, false, fmt.Errorf("invalid token or claims")
 }
 
-func GetUserFromGinContext(c *gin.Context) (string, error) {
+func GetUserEmailFromGinContext(c *gin.Context) (string, error) {
 	tokenString := c.GetHeader("Authorization")
 	if tokenString == "" {
 		return "", fmt.Errorf("authorization header is missing")

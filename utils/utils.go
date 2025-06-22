@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"time"
+	"math/rand"
 )
 
 var ClientUrl string
@@ -17,7 +18,7 @@ func GenerateRandomString(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	result := make([]byte, length)
 	for i := range result {
-		result[i] = charset[i%len(charset)]
+		result[i] = charset[rand.Intn(len(charset))]
 	}
 	return string(result)
 }

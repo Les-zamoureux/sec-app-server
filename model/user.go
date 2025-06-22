@@ -8,7 +8,7 @@ import (
 )
 
 type User struct {
-	ID                int    `json:"id"`
+	ID                string    `json:"id"`
 	Username          string `json:"username"`
 	Email             string `json:"email"`
 	Password          string `json:"password"`
@@ -31,15 +31,20 @@ func RegisterUser(username, email, password string) (*User, error) {
 		fmt.Println("Error executing user registration:", err)
 		return nil, err
 	}
-	mailcontroller.SendMail(email, "Account Verification", fmt.Sprintf("Please verify your account by clicking the following link: %s/verify-account/%s", utils.ClientUrl, token))
+	err = mailcontroller.SendMail(email, "Account Verification", fmt.Sprintf("Please verify your account by clicking the following link: %s/verify-account/%s", utils.ClientUrl, token))
+
+	if err != nil {
+		fmt.Println("Error sending verification email:", err)
+	}
 	return &user, nil
 }
 
 func GetUserByEmail(email string) (*User, error) {
 	var username string
 	var isAdmin bool
+	var id string
 	fmt.Println("Fetching user by email:", email)
-	err := db.DB.QueryRow("SELECT username, is_admin FROM users WHERE email=$1", email).Scan(&username, &isAdmin)
+	err := db.DB.QueryRow("SELECT id, username, is_admin FROM users WHERE email=$1", email).Scan(&id, &username, &isAdmin)
 
 	if err != nil {
 		fmt.Println("Error fetching user by email:", err)
@@ -47,18 +52,33 @@ func GetUserByEmail(email string) (*User, error) {
 	}
 
 	return &User{
+		ID: id,
 		Username: username,
 		IsAdmin:  isAdmin,
 	}, nil
 }
 
-func RemoveUser(email string) error {
-	sql, err := db.DB.Prepare("DELETE FROM users WHERE email = $1")
+func RemoveUserAdmin(id string) error {
+	sql, err := db.DB.Prepare("DELETE FROM users WHERE id = $1")
 	if err != nil {
 		fmt.Println("Error preparing delete statement:", err)
 		return err
 	}
-	_, err = sql.Exec(utils.HashString(email))
+	_, err = sql.Exec(id)
+	if err != nil {
+		fmt.Println("Error executing delete statement:", err)
+		return err
+	}
+	return nil
+}
+
+func RemoveUser(hashEmail string) error {
+	sql, err := db.DB.Prepare("DELETE FROM users WHERE id=$1")
+	if err != nil {
+		fmt.Println("Error preparing delete statement:", err)
+		return err
+	}
+	_, err = sql.Exec(hashEmail)
 	if err != nil {
 		fmt.Println("Error executing delete statement:", err)
 		return err
@@ -76,6 +96,24 @@ func CheckUserExists(username, email string) (bool, bool, error) {
 		return false, false, err
 	}
 	return usernameExists, emailExists, nil
+}
+
+func ChangeUserPassword(id, newPassword string) error {
+	sql, err := db.DB.Prepare("UPDATE users SET password=$1 WHERE id=$2")
+
+	if err != nil {
+		fmt.Println("Error while preparing the query:", err)
+		return err
+	}
+
+	_, err = sql.Exec(utils.HashString(newPassword), id)
+
+	if err != nil {
+		fmt.Println("Error while changing the password:", err)
+		return err
+	}
+
+	return nil
 }
 
 func AuthenticateUser(email, password string) (*User, error) {
@@ -96,6 +134,27 @@ func IsUserAdmin(email string) (bool, error) {
 		return false, err
 	}
 	return isAdmin, nil
+}
+
+func VerifyUser(token string) error {
+	var userID int
+	err := db.DB.QueryRow("SELECT id FROM users WHERE verification_token = $1", token).Scan(&userID)
+	if err != nil {
+		fmt.Println("Error verifying user:", err)
+		return err
+	}
+
+	sql, err := db.DB.Prepare("UPDATE users SET verification_token = NULL, verification_date = $1 WHERE id = $2")
+	if err != nil {
+		fmt.Println("Error preparing verification statement:", err)
+		return err
+	}
+	_, err = sql.Exec(utils.GetCurrentDate(), userID)
+	if err != nil {
+		fmt.Println("Error executing verification statement:", err)
+		return err
+	}
+	return nil
 }
 
 func AddProductToCart(userID, productID string, quantity int) error {

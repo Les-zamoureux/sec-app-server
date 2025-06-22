@@ -136,14 +136,14 @@ func initUserRoutes(r *gin.Engine) {
 		c.JSON(http.StatusOK, gin.H{"message": "Disconnected"})
 	})
 
-	r.DELETE("/user/:email", m.AdminAuthenticated(func(c *gin.Context) {
-		email := c.Param("email")
-		if email == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Email is required"})
+	r.DELETE("/admin/user/:id", m.AdminAuthenticated(func(c *gin.Context) {
+		id := c.Param("id")
+		if id == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "ID is required"})
 			return
 		}
 
-		err := mod.RemoveUser(email)
+		err := mod.RemoveUser(id)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove user"})
 			return
@@ -152,8 +152,38 @@ func initUserRoutes(r *gin.Engine) {
 		c.JSON(http.StatusOK, gin.H{"message": "User removed successfully"})
 	}))
 
+	r.DELETE("/user", m.Authenticated(func(c *gin.Context) {
+		email,  err := controller.GetUserEmailFromGinContext(c)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove user"})
+			return
+		}
+
+		err = mod.RemoveUser(email)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove user"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "User removed successfully"})
+	}))
+
+	r.POST("/user/verify/:token", func(c *gin.Context) {
+		token := c.Param("token")
+		if token == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Token is required"})
+			return
+		}
+		err := mod.VerifyUser(token)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify user"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "User verified successfully"})
+	})
+
 	r.GET("/user/me", m.Authenticated(func(c *gin.Context) {
-		userMail, err := controller.GetUserFromGinContext(c)
+		userMail, err := controller.GetUserEmailFromGinContext(c)
 		fmt.Println("User email from context:", userMail)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting the user"})
@@ -168,6 +198,35 @@ func initUserRoutes(r *gin.Engine) {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"username": user.Username, "is_admin": user.IsAdmin})
+	}))
+
+	r.PUT("/user/change-password", m.Authenticated(func (c *gin.Context) {
+		userMail, _ := controller.GetUserEmailFromGinContext(c)
+		user, _ := mod.GetUserByEmail(userMail)
+		var newPassword struct {
+			value string `json: newPassword`
+		}
+		
+		if err := c.ShouldBindJSON(&newPassword); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+			return
+		}
+
+		passwordOk := utils.PasswordValidator(newPassword.value)
+
+		if !passwordOk {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Password is not conform"})
+			return
+		}
+
+		err := mod.ChangeUserPassword(user.ID, newPassword.value)
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Error updating password"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Password changged successfully"})
 	}))
 
 	r.POST("/cart/add/", m.Authenticated(func(c *gin.Context) {
@@ -190,7 +249,7 @@ func initUserRoutes(r *gin.Engine) {
 			return
 		}
 
-		userID, err := controller.GetUserFromGinContext(c)
+		userID, err := controller.GetUserEmailFromGinContext(c)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 			return
@@ -206,7 +265,7 @@ func initUserRoutes(r *gin.Engine) {
 	}))
 
 	r.POST("/order", m.Authenticated(func(c *gin.Context) {
-		userID, err := controller.GetUserFromGinContext(c)
+		userID, err := controller.GetUserEmailFromGinContext(c)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 			return
@@ -327,6 +386,15 @@ func initFAQRoutes(r *gin.Engine) {
 			return
 		}
 		c.JSON(http.StatusOK, faqs)
+	}))
+
+	r.GET("/faq/:id", m.Authenticated(func(c *gin.Context) {
+		id := c.Param("id")
+		faq, err := mod.GetFAQ(id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch FAQ"})
+		}
+		c.JSON(http.StatusOK, faq)
 	}))
 
 	r.POST("/faq", m.AdminAuthenticated(func(c *gin.Context) {
