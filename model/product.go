@@ -172,109 +172,110 @@ func GetProductsByConditions(conditions string) ([]Product, error) {
 }
 
 func AddProduct(product *Product) (int, error) {
-	query := "INSERT INTO product (name, genetics, star, type, stock, thc_rate, cbd_rate, price, image, description, rating, color) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"
-	resProd, err := db.DB.Exec(query, product.Name, product.Genetics, product.Star, product.Type, product.Stock, product.Thc_rate, product.Cbd_rate, product.Price, product.Image, product.Description, product.Rating, product.Color)
-	fmt.Println(err)
+	query := "INSERT INTO product (name, genetics, star, type, stock, thc_rate, cbd_rate, price, image, description, rating, color) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id"
+	row := db.DB.QueryRow(query, product.Name, product.Genetics, product.Star, product.Type, product.Stock, product.Thc_rate, product.Cbd_rate, product.Price, product.Image, product.Description, product.Rating, product.Color)
+
+	var productID int
+	if err := row.Scan(&productID); err != nil {
+		return 0, err
+	}
+
+	// Flavors
 	for _, v := range product.Flavors {
-		resFlav, err := db.DB.Exec(`
+		var id int
+		err := db.DB.QueryRow(`
 			INSERT INTO flavor (name)
 			SELECT $1
-		`, v.Name)
+			RETURNING id
+		`, v.Name).Scan(&id)
 
+		// si déjà existant
 		if err != nil {
-			fmt.Println(err)
+			err = db.DB.QueryRow(`SELECT id FROM flavor WHERE name = $1`, v.Name).Scan(&id)
+			if err != nil {
+				fmt.Println("Erreur récupération flavor existant :", v.Name, err)
+				continue
+			}
 		}
 
-		lastProd, _ := resProd.LastInsertId()
-		lastFlav, _ := resFlav.LastInsertId()
-
-		_, err = db.DB.Exec(`
-			INSERT INTO has_flavor (product_id, flavor_id)
-			VALUES ($1, $2)
-		`, lastProd, lastFlav)
-
+		_, err = db.DB.Exec(`INSERT INTO has_flavor (product_id, flavor_id) VALUES ($1, $2)`, productID, id)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("Erreur liaison flavor :", err)
 		}
 	}
 
+	// Aspects
 	for _, v := range product.Aspects {
-		resAsp, err := db.DB.Exec(`
+		var id int
+		err := db.DB.QueryRow(`
 			INSERT INTO aspect (name)
 			SELECT $1
-		`, v.Name)
+			RETURNING id
+		`, v.Name).Scan(&id)
 
 		if err != nil {
-			fmt.Println(err)
+			err = db.DB.QueryRow(`SELECT id FROM aspect WHERE name = $1`, v.Name).Scan(&id)
+			if err != nil {
+				fmt.Println("Erreur récupération aspect existant :", v.Name, err)
+				continue
+			}
 		}
 
-		lastProd, _ := resProd.LastInsertId()
-		lastAsp, _ := resAsp.LastInsertId()
-
-		_, err = db.DB.Exec(`
-			INSERT INTO has_aspect (product_id, aspect_id)
-			VALUES ($1, $2)
-		`, lastProd, lastAsp)
-
+		_, err = db.DB.Exec(`INSERT INTO has_aspect (product_id, aspect_id) VALUES ($1, $2)`, productID, id)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("Erreur liaison aspect :", err)
 		}
 	}
 
+	// Effects
 	for _, v := range product.Effects {
-		resEff, err := db.DB.Exec(`
+		var id int
+		err := db.DB.QueryRow(`
 			INSERT INTO effet (name)
 			SELECT $1
-			WHERE NOT EXISTS (
-				SELECT * FROM effet WHERE name=$1
-			)
-		`, v.Name)
+			RETURNING id
+		`, v.Name).Scan(&id)
 
 		if err != nil {
-			fmt.Println(err)
+			err = db.DB.QueryRow(`SELECT id FROM effet WHERE name = $1`, v.Name).Scan(&id)
+			if err != nil {
+				fmt.Println("Erreur récupération effet existant :", v.Name, err)
+				continue
+			}
 		}
 
-		lastProd, _ := resProd.LastInsertId()
-		lastEff, _ := resEff.LastInsertId()
-
-		_, err = db.DB.Exec(`
-			INSERT INTO has_effect (product_id, effect_id)
-			VALUES ($1, $2)
-		`, lastProd, lastEff)
-
+		_, err = db.DB.Exec(`INSERT INTO has_effect (product_id, effect_id) VALUES ($1, $2)`, productID, id)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("Erreur liaison effet :", err)
 		}
 	}
 
+	// Ideal for
 	for _, v := range product.IdealFors {
-		resIdeal, err := db.DB.Exec(`
+		var id int
+		err := db.DB.QueryRow(`
 			INSERT INTO ideal_for (name)
 			SELECT $1
-			WHERE NOT EXISTS (
-				SELECT * FROM ideal_for WHERE name=$1
-			)
-		`, v.Name)
+			RETURNING id
+		`, v.Name).Scan(&id)
 
 		if err != nil {
-			fmt.Println(err)
+			err = db.DB.QueryRow(`SELECT id FROM ideal_for WHERE name = $1`, v.Name).Scan(&id)
+			if err != nil {
+				fmt.Println("Erreur récupération ideal_for existant :", v.Name, err)
+				continue
+			}
 		}
 
-		lastProd, _ := resProd.LastInsertId()
-		lastIdeal, _ := resIdeal.LastInsertId()
-
-		_, err = db.DB.Exec(`
-			INSERT INTO is_ideal_for (product_id, ideal_for_id)
-			VALUES ($1, $2)
-		`, lastProd, lastIdeal)
-
+		_, err = db.DB.Exec(`INSERT INTO is_ideal_for (product_id, ideal_for_id) VALUES ($1, $2)`, productID, id)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("Erreur liaison ideal_for :", err)
 		}
 	}
-	idProduct, _ := resProd.LastInsertId()
-	return int(idProduct), err
+
+	return productID, nil
 }
+
 
 func UpdateProduct(product *Product) error {
 	query := "UPDATE product SET name = $1, genetics = $2, star = $3, type = $4, thc_rate = $5, cbd_rate = $6, price = $7, description = $8, color = $9 WHERE id = $10"
