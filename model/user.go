@@ -39,13 +39,21 @@ func RegisterUser(username, email, password string) (*User, error) {
 	return &user, nil
 }
 
-func GetUserByEmailOrUsername(emailOrUsername string) (*User, error) {
+func GetUserByEmailOrUsername(emailOrUsername string, alreadyHashed bool) (*User, error) {
 	var username string
 	var email string
 	var isAdmin bool
 	var id string
 	fmt.Println(emailOrUsername)
-	err := db.DB.QueryRow("SELECT id, username, email, is_admin FROM users WHERE (email=$1 OR username=$2)", emailOrUsername, emailOrUsername).Scan(&id, &username, &email, &isAdmin)
+	var emaail string
+	if !alreadyHashed {
+		emaail = utils.HashString(emailOrUsername)
+	} else {
+		emaail = emailOrUsername
+	}
+
+	fmt.Println(emaail, "+", emailOrUsername)
+	err := db.DB.QueryRow("SELECT id, username, email, is_admin FROM users WHERE (email=$1 OR username=$2)", emaail, emailOrUsername).Scan(&id, &username, &email, &isAdmin)
 
 	if err != nil {
 		fmt.Println("Error fetching user by email:", err)

@@ -60,7 +60,7 @@ func LogRequest() gin.HandlerFunc {
 		if c.GetHeader("Authorization") != "" {
 			userMail, err := controller.GetUserEmailFromGinContext(c)
 			if err == nil {
-				user, _ := mod.GetUserByEmailOrUsername(userMail)
+				user, _ := mod.GetUserByEmailOrUsername(userMail, true)
 				userID = user.ID
 			}
 		}

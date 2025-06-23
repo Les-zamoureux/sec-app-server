@@ -113,7 +113,9 @@ func initUserRoutes(r *gin.Engine) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 			return
 		}
-		userInfo, err := mod.GetUserByEmailOrUsername(creds.MailOrUsername)
+		userInfo, err := mod.GetUserByEmailOrUsername(creds.MailOrUsername, false)
+
+		fmt.Println(err)
 
 		isUserVerified := mod.IsUserVerified(userInfo.Email)
 		if !isUserVerified {
@@ -217,7 +219,7 @@ func initUserRoutes(r *gin.Engine) {
 			return
 		}
 
-		user, err := mod.GetUserByEmailOrUsername(userMail)
+		user, err := mod.GetUserByEmailOrUsername(userMail, true)
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user"})
@@ -229,7 +231,7 @@ func initUserRoutes(r *gin.Engine) {
 
 	r.PUT("/user/change-password", m.Authenticated(func(c *gin.Context) {
 		userMail, _ := controller.GetUserEmailFromGinContext(c)
-		user, _ := mod.GetUserByEmailOrUsername(userMail)
+		user, _ := mod.GetUserByEmailOrUsername(userMail,  true)
 		var json struct {
 			OldPassword string `json:"oldPassword"`
 			NewPassword string `json:"newPassword"`
@@ -281,7 +283,7 @@ func initUserRoutes(r *gin.Engine) {
 			return
 		}
 
-		user, err := mod.GetUserByEmailOrUsername(email)
+		user, err := mod.GetUserByEmailOrUsername(email, true)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "failed to get user"})
 			return

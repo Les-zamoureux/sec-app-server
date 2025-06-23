@@ -59,7 +59,84 @@ func GetProducts() ([]Product, error) {
 		var product Product
 		if err := sql.Scan(&product.ID, &product.Name, &product.Genetics, &product.Star, &product.Type, &product.Stock, &product.Thc_rate, &product.Cbd_rate, &product.Price, &product.Image, &product.Description, &product.Rating, &product.Color); err != nil {
 			fmt.Println(err)
+			return nil, err
 		}
+
+		product.Aspects = []Aspect{}
+		sqlAspect, err := db.DB.Query(`
+			SELECT id, name
+			FROM aspect a JOIN has_aspect h ON a.id = h.aspect_id
+			WHERE product_id = $1
+		`, product.ID)
+		defer sqlAspect.Close()
+
+		if err != nil {
+			fmt.Println("sql::", err)
+		}
+
+		for sqlAspect.Next() {
+			var aspect Aspect
+			sqlAspect.Scan(&aspect.ID, &aspect.Name)
+			product.Aspects = append(product.Aspects, aspect)
+		}
+
+		product.Flavors = []Flavor{}
+		sqlFlavor, err := db.DB.Query(`
+			SELECT id, name
+			FROM flavor a JOIN has_flavor h ON a.id = h.flavor_id
+			WHERE product_id = $1
+		`, product.ID)
+		defer sqlFlavor.Close()
+
+		if err != nil {
+			fmt.Println("sql::", err)
+		}
+
+		for sqlFlavor.Next() {
+			var flavor Flavor
+			sqlFlavor.Scan(&flavor.ID, &flavor.Name)
+			product.Flavors = append(product.Flavors, flavor)
+		}
+
+		product.IdealFors = []IdealFor{}
+		sqlIdeal, err := db.DB.Query(`
+			SELECT id, name
+			FROM ideal_for a JOIN is_ideal_for h ON a.id = h.ideal_for_id
+			WHERE product_id = $1
+		`, product.ID)
+		defer sqlIdeal.Close()
+
+		if err != nil {
+			fmt.Println("sql::", err)
+		}
+
+		for sqlIdeal.Next() {
+			var idealFor IdealFor
+			err := sqlIdeal.Scan(&idealFor.ID, &idealFor.Name)
+			if err != nil {
+				fmt.Println(err)
+			}
+			product.IdealFors = append(product.IdealFors, idealFor)
+		}
+
+		product.Effects = []Effet{}
+		sqlEff, err := db.DB.Query(`
+			SELECT id, name
+			FROM effet a JOIN has_effect h ON a.id = h.effect_id
+			WHERE product_id = $1
+		`, product.ID)
+		defer sqlEff.Close()
+
+		if err != nil {
+			fmt.Println("sql::", err)
+		}
+
+		for sqlEff.Next() {
+			var effect Effet
+			sqlEff.Scan(&effect.ID, &effect.Name)
+			product.Effects = append(product.Effects, effect)
+		}
+
 		products = append(products, product)
 	}
 	fmt.Println(products)
@@ -95,8 +172,9 @@ func GetProductsByConditions(conditions string) ([]Product, error) {
 }
 
 func AddProduct(product *Product) error {
-	query := "INSERT INTO product (name, genetics, star, type, thc_rate, cbd_rate, price, description, color) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
-	resProd, err := db.DB.Exec(query, product.Name, product.Genetics, product.Star, product.Type, product.Thc_rate, product.Cbd_rate, product.Price, product.Description, product.Color)
+	query := "INSERT INTO product (name, genetics, star, type, stock, thc_rate, cbd_rate, price, image, description, rating, color) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"
+	resProd, err := db.DB.Exec(query, product.Name, product.Genetics, product.Star, product.Type,  product.Stock, product.Thc_rate, product.Cbd_rate, product.Price,  product.Image, product.Description, product.Rating, product.Color)
+	fmt.Println(err)
 	resProd.LastInsertId()
 	for _, v := range product.Flavors {
 		resFlav, err := db.DB.Exec(`
