@@ -135,7 +135,8 @@ func initUserRoutes(r *gin.Engine) {
 			return
 		}
 
-		tokenString, err := controller.EncodeJWT(user.Email)
+		fmt.Println(userInfo)
+		tokenString, err := controller.EncodeJWT(userInfo.Email)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
 			return
@@ -183,6 +184,15 @@ func initUserRoutes(r *gin.Engine) {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"message": "User removed successfully"})
+	}))
+
+	r.GET("/user",  m.AdminAuthenticated(func (c *gin.Context) {
+		users, err := mod.GetAllUser()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
+			return
+		}
+		c.JSON(http.StatusOK, users)
 	}))
 
 	r.POST("/user/verify/:token", func(c *gin.Context) {

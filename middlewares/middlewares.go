@@ -20,6 +20,7 @@ func AdminAuthenticated(handler func(c *gin.Context)) func(c *gin.Context) {
 			return
 		}
 		token, isUserAdmin, err := controller.DecodeJWT(strings.Split(c.GetHeader("Authorization"), " ")[1])
+		fmt.Println(isUserAdmin,  token, c.GetHeader("Authorization"))
 		if err != nil || token == nil || !isUserAdmin {
 			c.JSON(403, gin.H{"error": "Forbidden"})
 			c.Abort()

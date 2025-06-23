@@ -3,7 +3,6 @@ package controller
 import (
 	"fmt"
 	"sec-app-server/model"
-	"sec-app-server/utils"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,13 +12,14 @@ import (
 var jwtKey = []byte("secret_jwt_key")
 
 type Credentials struct {
-	MailOrUsername     string `json:"email"`
-	Password string `json:"password"`
+	MailOrUsername string `json:"email"`
+	Password       string `json:"password"`
 }
 
 func EncodeJWT(mail string) (string, error) {
 	fmt.Println(mail)
 	isUserAdmin, err := model.IsUserAdmin(mail)
+	fmt.Println(isUserAdmin)
 	if err != nil {
 		fmt.Println("bug here : ", err)
 		return "", err
@@ -34,7 +34,7 @@ func EncodeJWT(mail string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"mail": utils.HashString(mail),
+		"mail": mail,
 		"exp":  time.Now().Add(24 * time.Hour).Unix(),
 		"role": role,
 	})
@@ -56,6 +56,7 @@ func DecodeJWT(tokenString string) (*jwt.Token, bool, error) {
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		username := claims["mail"].(string)
 		isUserAdmin, err := model.IsUserAdmin(username)
+		fmt.Println("userad", isUserAdmin, username)
 		if err != nil {
 			return nil, false, err
 		}

@@ -44,7 +44,8 @@ func GetUserByEmailOrUsername(emailOrUsername string) (*User, error) {
 	var email string
 	var isAdmin bool
 	var id string
-	err := db.DB.QueryRow("SELECT id, username, email, is_admin FROM users WHERE (email=$1 OR username=$2)", utils.HashString(emailOrUsername), emailOrUsername).Scan(&id, &username, &email, &isAdmin)
+	fmt.Println(emailOrUsername)
+	err := db.DB.QueryRow("SELECT id, username, email, is_admin FROM users WHERE (email=$1 OR username=$2)", emailOrUsername, emailOrUsername).Scan(&id, &username, &email, &isAdmin)
 
 	if err != nil {
 		fmt.Println("Error fetching user by email:", err)
@@ -115,6 +116,30 @@ func ChangeUserPassword(id, newPassword string) error {
 	}
 
 	return nil
+}
+
+func GetAllUser() ([]User, error) {
+	users := []User{}
+	sql, err := db.DB.Query(`
+		SELECT id, username, email, password, is_admin, COALESCE(verification_token, ''), COALESCE(verification_date, ''), COALESCE(creation_date, '')
+		FROM users
+	`)
+	if err != nil {
+		fmt.Println("Error fetching users:", err)
+		return nil, err
+	}
+	defer sql.Close()
+
+	for sql.Next() {
+		var user User
+		if err := sql.Scan(&user.ID, &user.Username, &user.Email, &user.Password, &user.IsAdmin, &user.VerificationToken, &user.VerificationDate, &user.CreationDate); err != nil {
+			fmt.Println("rrr", err)
+			return nil, err
+		}
+		users = append(users, user)
+	}
+
+	return users, nil
 }
 
 func AuthenticateUser(email, password string) (*User, error) {
