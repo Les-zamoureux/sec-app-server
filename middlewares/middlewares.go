@@ -57,9 +57,11 @@ func LogRequest() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := "not connected"
 		if c.GetHeader("Authorization") != "" {
-			userMail, _ := controller.GetUserEmailFromGinContext(c)
-			user, _ := mod.GetUserByEmail(userMail)
-			userID = user.ID
+			userMail, err := controller.GetUserEmailFromGinContext(c)
+			if err == nil {
+				user, _ := mod.GetUserByEmail(userMail)
+				userID = user.ID
+			}
 		}
 		c.Next()
 
