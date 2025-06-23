@@ -13,12 +13,13 @@ import (
 var jwtKey = []byte("secret_jwt_key")
 
 type Credentials struct {
-	Mail     string `json:"email"`
+	MailOrUsername     string `json:"email"`
 	Password string `json:"password"`
 }
 
 func EncodeJWT(mail string) (string, error) {
-	isUserAdmin, err := model.IsUserAdmin(utils.HashString(mail))
+	fmt.Println(mail)
+	isUserAdmin, err := model.IsUserAdmin(mail)
 	if err != nil {
 		fmt.Println("bug here : ", err)
 		return "", err

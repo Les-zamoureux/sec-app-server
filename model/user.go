@@ -39,12 +39,12 @@ func RegisterUser(username, email, password string) (*User, error) {
 	return &user, nil
 }
 
-func GetUserByEmail(email string) (*User, error) {
+func GetUserByEmailOrUsername(emailOrUsername string) (*User, error) {
 	var username string
+	var email string
 	var isAdmin bool
 	var id string
-	fmt.Println("Fetching user by email:", email)
-	err := db.DB.QueryRow("SELECT id, username, is_admin FROM users WHERE email=$1", email).Scan(&id, &username, &isAdmin)
+	err := db.DB.QueryRow("SELECT id, username, email, is_admin FROM users WHERE (email=$1 OR username=$2)", utils.HashString(emailOrUsername), emailOrUsername).Scan(&id, &username, &email, &isAdmin)
 
 	if err != nil {
 		fmt.Println("Error fetching user by email:", err)
@@ -53,6 +53,7 @@ func GetUserByEmail(email string) (*User, error) {
 
 	return &User{
 		ID: id,
+		Email: email,
 		Username: username,
 		IsAdmin:  isAdmin,
 	}, nil
@@ -118,7 +119,7 @@ func ChangeUserPassword(id, newPassword string) error {
 
 func AuthenticateUser(email, password string) (*User, error) {
 	var user User
-	err := db.DB.QueryRow("SELECT id, username, email, password, is_admin FROM users WHERE email = $1 AND password = $2", utils.HashString(email), utils.HashString(password)).Scan(&user.ID, &user.Username, &user.Email, &user.Password, &user.IsAdmin)
+	err := db.DB.QueryRow("SELECT id, username, email, password, is_admin FROM users WHERE (email = $1 OR username=$2) AND password = $3", utils.HashString(email), email, utils.HashString(password)).Scan(&user.ID, &user.Username, &user.Email, &user.Password, &user.IsAdmin)
 	if err != nil {
 		fmt.Println("Error authenticating user:", err)
 		return nil, err
@@ -155,11 +156,31 @@ func MakeUserAdmin(id string) error {
 func IsUserAdmin(email string) (bool, error) {
 	// only hashed email
 	var isAdmin bool
+	fmt.Println(email)
 	err := db.DB.QueryRow("SELECT is_admin FROM users WHERE email = $1", email).Scan(&isAdmin)
 	if err != nil {
 		return false, err
 	}
 	return isAdmin, nil
+}
+
+func IsUserVerified(email string) bool {
+	var isUserVerified bool
+	err := db.DB.QueryRow(`
+		SELECT EXISTS (
+			SELECT * 
+			FROM users 
+			WHERE (email=$1 OR username=$1)
+			AND verification_token IS NULL 
+			AND verification_date IS NOT NULL
+		)
+	`, email).Scan(&isUserVerified)
+
+	if err != nil {
+		return false
+	}
+
+	return isUserVerified
 }
 
 func VerifyUser(token string) error {

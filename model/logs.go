@@ -24,7 +24,7 @@ func DeleteLogByID(id string) error {
 }
 
 func GetAllLogs() ([]LogEntry, error) {
-	rows, err := db.DB.Query("SELECT id, user_id, method, url, timestamp FROM logs ORDER BY timestamp DESC")
+	rows, err := db.DB.Query("SELECT id, user_id, method, url, timestamp FROM logs ORDER BY timestamp DESC LIMIT 100")
 	if err != nil {
 		return nil, err
 	}

@@ -59,22 +59,24 @@ func LogRequest() gin.HandlerFunc {
 		if c.GetHeader("Authorization") != "" {
 			userMail, err := controller.GetUserEmailFromGinContext(c)
 			if err == nil {
-				user, _ := mod.GetUserByEmail(userMail)
+				user, _ := mod.GetUserByEmailOrUsername(userMail)
 				userID = user.ID
 			}
 		}
 		c.Next()
 
 		// Enregistre la requête dans la BDD
-		_, err := db.DB.Exec(
-			"INSERT INTO logs (user_id, method, url, timestamp) VALUES ($1, $2, $3, $4)",
-			userID,
-			c.Request.Method,
-			c.Request.RequestURI,
-			time.Now(),
-		)
-		if err != nil {
-			log.Println("Erreur insertion log:", err)
+		if (strings.Contains("GET POST PUT DELETE", c.Request.Method)) {
+			_, err := db.DB.Exec(
+				"INSERT INTO logs (user_id, method, url, timestamp) VALUES ($1, $2, $3, $4)",
+				userID,
+				c.Request.Method,
+				c.Request.RequestURI,
+				time.Now(),
+			)
+			if err != nil {
+				log.Println("Erreur insertion log:", err)
+			}
 		}
 	}
 }

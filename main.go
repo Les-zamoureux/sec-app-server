@@ -113,8 +113,15 @@ func initUserRoutes(r *gin.Engine) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 			return
 		}
+		userInfo, err := mod.GetUserByEmailOrUsername(creds.MailOrUsername)
 
-		user, err := mod.AuthenticateUser(creds.Mail, creds.Password)
+		isUserVerified := mod.IsUserVerified(userInfo.Email)
+		if !isUserVerified {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User is not verified"})
+			return
+		}
+
+		user, err := mod.AuthenticateUser(creds.MailOrUsername, creds.Password)
 
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
@@ -122,8 +129,13 @@ func initUserRoutes(r *gin.Engine) {
 		}
 
 		fmt.Println("User authenticated:", user)
+		
+		if err != nil {
+			c.JSON(http.StatusInternalServerError,  gin.H{"error": "Error getting the user"})
+			return
+		}
 
-		tokenString, err := controller.EncodeJWT(creds.Mail)
+		tokenString, err := controller.EncodeJWT(user.Email)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
 			return
@@ -195,7 +207,7 @@ func initUserRoutes(r *gin.Engine) {
 			return
 		}
 
-		user, err := mod.GetUserByEmail(userMail)
+		user, err := mod.GetUserByEmailOrUsername(userMail)
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user"})
@@ -207,7 +219,7 @@ func initUserRoutes(r *gin.Engine) {
 
 	r.PUT("/user/change-password", m.Authenticated(func(c *gin.Context) {
 		userMail, _ := controller.GetUserEmailFromGinContext(c)
-		user, _ := mod.GetUserByEmail(userMail)
+		user, _ := mod.GetUserByEmailOrUsername(userMail)
 		var json struct {
 			OldPassword string `json:"oldPassword"`
 			NewPassword string `json:"newPassword"`
@@ -259,7 +271,7 @@ func initUserRoutes(r *gin.Engine) {
 			return
 		}
 
-		user, err := mod.GetUserByEmail(email)
+		user, err := mod.GetUserByEmailOrUsername(email)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "failed to get user"})
 			return
@@ -327,7 +339,7 @@ func initUserRoutes(r *gin.Engine) {
 }
 
 func initProductRoutes(r *gin.Engine) {
-	r.GET("/products", m.AdminAuthenticated(func(c *gin.Context) {
+	r.GET("/product", m.AdminAuthenticated(func(c *gin.Context) {
 		products, err := mod.GetProducts()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch products"})
@@ -356,7 +368,7 @@ func initProductRoutes(r *gin.Engine) {
 		c.JSON(http.StatusOK, products[0])
 	}))
 
-	r.POST("/product/add", m.AdminAuthenticated(func(c *gin.Context) {
+	r.POST("/product", m.AdminAuthenticated(func(c *gin.Context) {
 		var product mod.Product
 		if err := c.ShouldBindJSON(&product); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
@@ -369,7 +381,7 @@ func initProductRoutes(r *gin.Engine) {
 		c.JSON(http.StatusOK, gin.H{"message": "Product added successfully"})
 	}))
 
-	r.PUT("/product/edit/:id", m.AdminAuthenticated(func(c *gin.Context) {
+	r.PUT("/product/:id", m.AdminAuthenticated(func(c *gin.Context) {
 		id := c.Param("id")
 		if id == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Product ID is required"})
@@ -414,7 +426,7 @@ func initProductRoutes(r *gin.Engine) {
 		c.JSON(200, gin.H{"message": "Image mise à jour avec succès", "path": "/" + path})
 	})
 
-	r.DELETE("/product/delete/:id", m.AdminAuthenticated(func(c *gin.Context) {
+	r.DELETE("/product/:id", m.AdminAuthenticated(func(c *gin.Context) {
 		id := c.Param("id")
 		if id == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Product ID is required"})
@@ -523,7 +535,7 @@ func initFAQRoutes(r *gin.Engine) {
 }
 
 func initLogsRoutes(r *gin.Engine) {
-	r.DELETE("/logs/:id", m.AdminAuthenticated(func(c *gin.Context) {
+	r.DELETE("/log/:id", m.AdminAuthenticated(func(c *gin.Context) {
 		id := c.Param("id")
 
 		err := mod.DeleteLogByID(id)
@@ -536,7 +548,7 @@ func initLogsRoutes(r *gin.Engine) {
 	}))
 
 	// Récupérer tous les logs
-	r.GET("/admin/logs", m.AdminAuthenticated(func(c *gin.Context) {
+	r.GET("/log", m.AdminAuthenticated(func(c *gin.Context) {
 		logs, err := mod.GetAllLogs()
 		if err != nil {
 			c.JSON(500, gin.H{"error": "Impossible de récupérer les logs"})
