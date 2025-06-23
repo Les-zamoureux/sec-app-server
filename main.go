@@ -417,7 +417,7 @@ func initProductRoutes(r *gin.Engine) {
 		c.JSON(http.StatusOK, gin.H{"message": "Product updated successfully"})
 	}))
 
-	r.POST("/products/:id/image", func(c *gin.Context) {
+	r.POST("/product/:id/image", func(c *gin.Context) {
 		productID := c.Param("id")
 
 		// Récupère le fichier image
