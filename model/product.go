@@ -24,6 +24,7 @@ type Product struct {
 	Aspects     []Aspect   `json:"aspects"`
 	Effects     []Effet    `json:"effects"`
 	IdealFors   []IdealFor `json:"idealfors"`
+	Categories  []Category `json:"categories"`
 }
 
 type Flavor struct {
@@ -46,6 +47,11 @@ type IdealFor struct {
 	Name string `json:"name"`
 }
 
+type Category struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 func GetProducts() ([]Product, error) {
 	var products []Product
 	sql, err := db.DB.Query("SELECT * FROM product")
@@ -60,6 +66,24 @@ func GetProducts() ([]Product, error) {
 		if err := sql.Scan(&product.ID, &product.Name, &product.Genetics, &product.Star, &product.Type, &product.Stock, &product.Thc_rate, &product.Cbd_rate, &product.Price, &product.Image, &product.Description, &product.Rating, &product.Color); err != nil {
 			fmt.Println(err)
 			return nil, err
+		}
+
+		product.Categories = []Category{}
+		sqlCategories, err := db.DB.Query(`
+			SELECT id, name
+			FROM category a JOIN belongs_to h ON a.id = h.category_id
+			WHERE product_id = $1
+		`, product.ID)
+		defer sqlCategories.Close()
+
+		if err != nil {
+			fmt.Println("sql::", err)
+		}
+
+		for sqlCategories.Next() {
+			var category Category
+			sqlCategories.Scan(&category.ID, &category.Name)
+			product.Categories = append(product.Categories, category)
 		}
 
 		product.Aspects = []Aspect{}
@@ -227,6 +251,28 @@ func AddProduct(product *Product) (int, error) {
 		}
 	}
 
+	for _, v := range product.Categories {
+		var id int
+		err := db.DB.QueryRow(`
+			INSERT INTO category (name)
+			SELECT $1
+			RETURNING id
+		`, v.Name).Scan(&id)
+
+		if err != nil {
+			err = db.DB.QueryRow(`SELECT id FROM category WHERE name = $1`, v.Name).Scan(&id)
+			if err != nil {
+				fmt.Println("Erreur récupération category existant :", v.Name, err)
+				continue
+			}
+		}
+
+		_, err = db.DB.Exec(`INSERT INTO belongs_to (product_id, category_ido) VALUES ($1, $2)`, productID, id)
+		if err != nil {
+			fmt.Println("Erreur liaison aspect :", err)
+		}
+	}
+
 	// Effects
 	for _, v := range product.Effects {
 		var id int
@@ -276,7 +322,6 @@ func AddProduct(product *Product) (int, error) {
 	return productID, nil
 }
 
-
 func UpdateProduct(product *Product) error {
 	query := "UPDATE product SET name = $1, genetics = $2, star = $3, type = $4, thc_rate = $5, cbd_rate = $6, price = $7, description = $8, color = $9 WHERE id = $10"
 	_, err := db.DB.Exec(query, product.Name, product.Genetics, product.Star, product.Type, product.Thc_rate, product.Cbd_rate, product.Price, product.Description, product.Color, product.ID)
@@ -300,6 +345,24 @@ func GetProductByID(id string) (*Product, error) {
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
+	}
+
+	product.Categories = []Category{}
+	sqlCategory, err := db.DB.Query(`
+			SELECT id, name
+			FROM aspect a JOIN has_aspect h ON a.id = h.aspect_id
+			WHERE product_id = $1
+		`, product.ID)
+	defer sqlCategory.Close()
+
+	if err != nil {
+		fmt.Println("sql::", err)
+	}
+
+	for sqlCategory.Next() {
+		var category Category
+		sqlCategory.Scan(&category.ID, &category.Name)
+		product.Categories = append(product.Categories, category)
 	}
 
 	product.Aspects = []Aspect{}
