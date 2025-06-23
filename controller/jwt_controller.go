@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"os"
 	"sec-app-server/model"
 	"time"
 
@@ -9,7 +10,11 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var jwtKey = []byte("secret_jwt_key")
+var jwtKey []byte
+
+func LoadJWTSecret() {
+	jwtKey = []byte(os.Getenv("JWT_SECRET"))
+}
 
 type Credentials struct {
 	MailOrUsername string `json:"email"`

@@ -29,6 +29,8 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
+	controller.LoadJWTSecret()
+
 	mailcontroller.InitMailSystem()
 
 	utils.ClientUrl = os.Getenv("CLIENT_URL")
