@@ -2,8 +2,12 @@ package middlewares
 
 import (
 	"fmt"
+	"log"
 	"sec-app-server/controller"
+	"sec-app-server/db"
+	mod "sec-app-server/model"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -45,6 +49,30 @@ func Authenticated(handler func(c *gin.Context)) func(c *gin.Context) {
 			fmt.Println("Ça marche !")
 			handler(c)
 			return
+		}
+	}
+}
+
+func LogRequest() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID := "not connected"
+		if c.GetHeader("Authorization") != "" {
+			userMail, _ := controller.GetUserEmailFromGinContext(c)
+			user, _ := mod.GetUserByEmail(userMail)
+			userID = user.ID
+		}
+		c.Next()
+
+		// Enregistre la requête dans la BDD
+		_, err := db.DB.Exec(
+			"INSERT INTO logs (user_id, method, url, timestamp) VALUES ($1, $2, $3, $4)",
+			userID,
+			c.Request.Method,
+			c.Request.RequestURI,
+			time.Now(),
+		)
+		if err != nil {
+			log.Println("Erreur insertion log:", err)
 		}
 	}
 }

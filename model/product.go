@@ -40,6 +40,11 @@ func GetProducts() ([]Product, error) {
 	return result, nil
 }
 
+func ChangeImagePath(productID, imagePath string) error {
+	_, err := db.DB.Exec("UPDATE product SET image = $1 WHERE id = $2", imagePath, productID)
+	return err
+}
+
 func GetProductsByConditions(conditions string) ([]Product, error) {
 	var products []Product
 	// Prepare the SQL query with conditions

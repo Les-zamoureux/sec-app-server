@@ -21,6 +21,8 @@ import (
 func main() {
 	r := gin.Default()
 
+	r.Use(m.LogRequest())
+
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
@@ -41,6 +43,9 @@ func main() {
 	initUserRoutes(r)
 	initProductRoutes(r)
 	initFAQRoutes(r)
+	initLogsRoutes(r)
+
+	r.Static("/uploads", "./uploads")
 
 	err = db.InitDB()
 
@@ -153,7 +158,7 @@ func initUserRoutes(r *gin.Engine) {
 	}))
 
 	r.DELETE("/user", m.Authenticated(func(c *gin.Context) {
-		email,  err := controller.GetUserEmailFromGinContext(c)
+		email, err := controller.GetUserEmailFromGinContext(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove user"})
 			return
@@ -200,26 +205,32 @@ func initUserRoutes(r *gin.Engine) {
 		c.JSON(http.StatusOK, gin.H{"username": user.Username, "is_admin": user.IsAdmin})
 	}))
 
-	r.PUT("/user/change-password", m.Authenticated(func (c *gin.Context) {
+	r.PUT("/user/change-password", m.Authenticated(func(c *gin.Context) {
 		userMail, _ := controller.GetUserEmailFromGinContext(c)
 		user, _ := mod.GetUserByEmail(userMail)
-		var newPassword struct {
-			value string `json: newPassword`
+		var json struct {
+			OldPassword string `json:"oldPassword"`
+			NewPassword string `json:"newPassword"`
 		}
-		
-		if err := c.ShouldBindJSON(&newPassword); err != nil {
+
+		if err := c.ShouldBindJSON(&json); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 			return
 		}
 
-		passwordOk := utils.PasswordValidator(newPassword.value)
+		if !mod.IsPasswordCorrect(userMail, utils.HashString(json.OldPassword)) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "old password is not correct"})
+			return
+		}
+
+		passwordOk := utils.PasswordValidator(json.NewPassword)
 
 		if !passwordOk {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Password is not conform"})
 			return
 		}
 
-		err := mod.ChangeUserPassword(user.ID, newPassword.value)
+		err := mod.ChangeUserPassword(user.ID, json.NewPassword)
 
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Error updating password"})
@@ -227,6 +238,40 @@ func initUserRoutes(r *gin.Engine) {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"message": "Password changged successfully"})
+	}))
+
+	r.POST("/user/make-admin/:id", m.AdminAuthenticated(func(c *gin.Context) {
+		id := c.Param("id")
+
+		err := mod.MakeUserAdmin(id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "error whihle making the user admin"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "the user is now admin !"})
+	}))
+
+	r.GET("/user/orders", m.Authenticated(func(c *gin.Context) {
+		email, err := controller.GetUserEmailFromGinContext(c)
+		if err != nil {
+			c.JSON(401, gin.H{"error": "unauthorized"})
+			return
+		}
+
+		user, err := mod.GetUserByEmail(email)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "failed to get user"})
+			return
+		}
+
+		orders, err := mod.GetAllOrdersFromUser(user.ID)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "failed to get orders"})
+			return
+		}
+
+		c.JSON(200, gin.H{"orders": orders})
 	}))
 
 	r.POST("/cart/add/", m.Authenticated(func(c *gin.Context) {
@@ -344,6 +389,31 @@ func initProductRoutes(r *gin.Engine) {
 		c.JSON(http.StatusOK, gin.H{"message": "Product updated successfully"})
 	}))
 
+	r.POST("/products/:id/image", func(c *gin.Context) {
+		productID := c.Param("id")
+
+		// Récupère le fichier image
+		file, err := c.FormFile("image")
+		if err != nil {
+			c.JSON(400, gin.H{"error": "Image manquante"})
+			return
+		}
+
+		path := "uploads/" + file.Filename
+		if err := c.SaveUploadedFile(file, path); err != nil {
+			c.JSON(500, gin.H{"error": "Échec de l'enregistrement de l'image"})
+			return
+		}
+
+		// Met à jour le chemin en base
+		if err := mod.ChangeImagePath(productID, "/"+path); err != nil {
+			c.JSON(500, gin.H{"error": "Échec de la mise à jour de l'image"})
+			return
+		}
+
+		c.JSON(200, gin.H{"message": "Image mise à jour avec succès", "path": "/" + path})
+	})
+
 	r.DELETE("/product/delete/:id", m.AdminAuthenticated(func(c *gin.Context) {
 		id := c.Param("id")
 		if id == "" {
@@ -428,5 +498,30 @@ func initFAQRoutes(r *gin.Engine) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "FAQ deleted successfully"})
+	}))
+}
+
+func initLogsRoutes(r *gin.Engine) {
+	r.DELETE("/logs/:id", m.AdminAuthenticated(func(c *gin.Context) {
+		id := c.Param("id")
+
+		err := mod.DeleteLogByID(id)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Erreur lors de la suppression du log"})
+			return
+		}
+
+		c.JSON(200, gin.H{"message": "Log supprimé avec succès"})
+	}))
+
+	// Récupérer tous les logs
+	r.GET("/admin/logs", m.AdminAuthenticated(func(c *gin.Context) {
+		logs, err := mod.GetAllLogs()
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Impossible de récupérer les logs"})
+			return
+		}
+
+		c.JSON(200, gin.H{"logs": logs})
 	}))
 }

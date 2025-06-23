@@ -126,6 +126,32 @@ func AuthenticateUser(email, password string) (*User, error) {
 	return &user, nil
 }
 
+func IsPasswordCorrect(hashEmail, hashPassword string) bool {
+	var res bool
+	err := db.DB.QueryRow("SELECT EXISTS (SELECT * FROM users WHERE email=$1 AND password=$2)", hashEmail, hashPassword).Scan(&res)
+	if err != nil {
+		fmt.Println("Error verifying password")
+		return false
+	}
+	return res
+}
+
+func MakeUserAdmin(id string) error {
+	sql, err := db.DB.Prepare("UPDATE users SET is_admin = true WHERE id = $1")
+	if err != nil {
+		fmt.Println("Error preparing verification statement:", err)
+		return err
+	}
+
+	_, err = sql.Exec(id)
+	if err != nil {
+		fmt.Println("Error executing update statement:", err)
+		return err
+	}
+	return nil
+}
+
+
 func IsUserAdmin(email string) (bool, error) {
 	// only hashed email
 	var isAdmin bool
