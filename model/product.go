@@ -296,7 +296,7 @@ func GetProductByID(id string) (*Product, error) {
 	var product Product
 	err := sql.Scan(&product.ID, &product.Name, &product.Genetics, &product.Star, &product.Type, &product.Stock, &product.Thc_rate, &product.Cbd_rate, &product.Price, &product.Image, &product.Description, &product.Rating, &product.Color)
 
-	if err := sql.Scan(&product.ID, &product.Name, &product.Genetics, &product.Star, &product.Type, &product.Stock, &product.Thc_rate, &product.Cbd_rate, &product.Price, &product.Image, &product.Description, &product.Rating, &product.Color); err != nil {
+	if err != nil {
 		fmt.Println(err)
 		return nil, err
 	}
