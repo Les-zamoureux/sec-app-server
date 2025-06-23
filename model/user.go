@@ -162,6 +162,8 @@ func IsPasswordCorrect(hashEmail, hashPassword string) bool {
 	return res
 }
 
+// func AddToFav(userID, )
+
 func MakeUserAdmin(id string) error {
 	sql, err := db.DB.Prepare("UPDATE users SET is_admin = true WHERE id = $1")
 	if err != nil {

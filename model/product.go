@@ -12,33 +12,59 @@ type Product struct {
 	Genetics    string  `json:"genetics"`
 	Star        bool    `json:"star"`
 	Type        string  `json:"type"`
+	Stock int `json:"stock"`
 	Thc_rate    float64 `json:"thc_rate"`
 	Cbd_rate    float64 `json:"cbd_rate"`
 	Price       float64 `json:"price"`
+	Image string `json:"image"`
 	Description string  `json:"description"`
+	Rating int `json:"rating"`
 	Color       string  `json:"color"`
 	ImagePath string `json:"image_path"`
+	Flavors []Flavor `json:"flavors"`
+	Aspects []Aspect `json:"aspects"`
+	Effects []Effet `json:"effects"`
+	IdealFors []IdealFor `json:"idealfors"`
+}
+
+type Flavor struct {
+	ID string `json:"id"`
+	Name string `json:"name"`
+}
+
+type Aspect struct {
+	ID string `json:"id"`
+	Name string `json:"name"`
+}
+
+type Effet struct {
+	ID string `json:"id"`
+	Name string `json:"name"`
+}
+
+type IdealFor struct {
+	ID string `json:"id"`
+	Name string `json:"name"`
 }
 
 func GetProducts() ([]Product, error) {
 	var products []Product
-	err := db.DB.QueryRow("SELECT * FROM product").Scan(&products)
+	sql, err := db.DB.Query("SELECT * FROM product")
 	if err != nil {
 		fmt.Println("Error fetching products:", err)
 		return nil, err
 	}
+	defer sql.Close()
 
-	jsonData, err := json.Marshal(products)
-	if err != nil {
-		return nil, err
+	for sql.Next() {
+		var product Product
+		if err := sql.Scan(&product.ID,  &product.Name, &product.Genetics ,&product.Star, &product.Type, &product.Stock,  &product.Thc_rate, &product.Cbd_rate, &product.Price, &product.Image,  &product.Description, &product.Rating,  &product.Color, &product.ImagePath); err != nil {
+			fmt.Println(err)
+		}
+		products = append(products, product)
 	}
-
-	var result []Product
-	err = json.Unmarshal(jsonData, &result)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
+	fmt.Println(products)
+	return products, nil
 }
 
 func ChangeImagePath(productID, imagePath string) error {
