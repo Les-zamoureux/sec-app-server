@@ -384,6 +384,7 @@ func initProductRoutes(r *gin.Engine) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 			return
 		}
+		fmt.Println(product.Flavors)
 		if err := mod.AddProduct(&product); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add product"})
 			return
