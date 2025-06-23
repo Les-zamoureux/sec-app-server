@@ -367,17 +367,15 @@ func initProductRoutes(r *gin.Engine) {
 			return
 		}
 
-		products, err := mod.GetProductsByConditions("ID = " + id)
+		fmt.Println()
+		product, err := mod.GetProductByID(id)
+
 		if err != nil {
-			fmt.Println("Error fetching product:", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch product"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "error while getting the product"})
 			return
 		}
-		if products == nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
-			return
-		}
-		c.JSON(http.StatusOK, products[0])
+
+		c.JSON(http.StatusOK, gin.H{"product": product})
 	}))
 
 	r.POST("/product", m.AdminAuthenticated(func(c *gin.Context) {
@@ -387,11 +385,16 @@ func initProductRoutes(r *gin.Engine) {
 			return
 		}
 		fmt.Println(product.Flavors)
-		if err := mod.AddProduct(&product); err != nil {
+
+		productID, err := mod.AddProduct(&product)
+		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add product"})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"message": "Product added successfully"})
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Product added successfully",
+			"productID": productID,
+		})
 	}))
 
 	r.PUT("/product/:id", m.AdminAuthenticated(func(c *gin.Context) {
@@ -457,19 +460,6 @@ func initProductRoutes(r *gin.Engine) {
 func initAdminRoutes(r *gin.Engine) {
 	r.GET("/admin", m.AdminAuthenticated(func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "Welcome Admin!"})
-	}))
-
-	r.POST("/admin/create-product", m.AdminAuthenticated(func(c *gin.Context) {
-		var product mod.Product
-		if err := c.ShouldBindJSON(&product); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
-			return
-		}
-		if err := mod.AddProduct(&product); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create product"})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"message": "Product created successfully"})
 	}))
 }
 

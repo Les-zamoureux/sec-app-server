@@ -171,11 +171,10 @@ func GetProductsByConditions(conditions string) ([]Product, error) {
 	return result, nil
 }
 
-func AddProduct(product *Product) error {
+func AddProduct(product *Product) (int, error) {
 	query := "INSERT INTO product (name, genetics, star, type, stock, thc_rate, cbd_rate, price, image, description, rating, color) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"
-	resProd, err := db.DB.Exec(query, product.Name, product.Genetics, product.Star, product.Type,  product.Stock, product.Thc_rate, product.Cbd_rate, product.Price,  product.Image, product.Description, product.Rating, product.Color)
+	resProd, err := db.DB.Exec(query, product.Name, product.Genetics, product.Star, product.Type, product.Stock, product.Thc_rate, product.Cbd_rate, product.Price, product.Image, product.Description, product.Rating, product.Color)
 	fmt.Println(err)
-	resProd.LastInsertId()
 	for _, v := range product.Flavors {
 		resFlav, err := db.DB.Exec(`
 			INSERT INTO flavor (name)
@@ -187,7 +186,7 @@ func AddProduct(product *Product) error {
 		}
 
 		lastProd, _ := resProd.LastInsertId()
-		lastFlav, _:= resFlav.LastInsertId()
+		lastFlav, _ := resFlav.LastInsertId()
 
 		_, err = db.DB.Exec(`
 			INSERT INTO has_flavor (product_id, flavor_id)
@@ -210,7 +209,7 @@ func AddProduct(product *Product) error {
 		}
 
 		lastProd, _ := resProd.LastInsertId()
-		lastAsp, _:= resAsp.LastInsertId()
+		lastAsp, _ := resAsp.LastInsertId()
 
 		_, err = db.DB.Exec(`
 			INSERT INTO has_aspect (product_id, aspect_id)
@@ -236,7 +235,7 @@ func AddProduct(product *Product) error {
 		}
 
 		lastProd, _ := resProd.LastInsertId()
-		lastEff, _:= resEff.LastInsertId()
+		lastEff, _ := resEff.LastInsertId()
 
 		_, err = db.DB.Exec(`
 			INSERT INTO has_effect (product_id, effect_id)
@@ -262,7 +261,7 @@ func AddProduct(product *Product) error {
 		}
 
 		lastProd, _ := resProd.LastInsertId()
-		lastIdeal, _:= resIdeal.LastInsertId()
+		lastIdeal, _ := resIdeal.LastInsertId()
 
 		_, err = db.DB.Exec(`
 			INSERT INTO is_ideal_for (product_id, ideal_for_id)
@@ -273,7 +272,8 @@ func AddProduct(product *Product) error {
 			fmt.Println(err)
 		}
 	}
-	return err
+	idProduct, _ := resProd.LastInsertId()
+	return int(idProduct), err
 }
 
 func UpdateProduct(product *Product) error {
@@ -289,16 +289,95 @@ func DeleteProduct(id string) error {
 }
 
 func GetProductByID(id string) (*Product, error) {
+	fmt.Println("id", id)
 	query := "SELECT * FROM product WHERE id = $1"
-	row := db.DB.QueryRow(query, id)
+	sql := db.DB.QueryRow(query, id)
 
 	var product Product
-	err := row.Scan(&product.ID, &product.Name, &product.Genetics, &product.Star, &product.Type, &product.Thc_rate, &product.Cbd_rate, &product.Price, &product.Description, &product.Color)
-	if err != nil {
-		if err != nil {
-			return nil, fmt.Errorf("no product found with id %s", id)
-		}
+	err := sql.Scan(&product.ID, &product.Name, &product.Genetics, &product.Star, &product.Type, &product.Stock, &product.Thc_rate, &product.Cbd_rate, &product.Price, &product.Image, &product.Description, &product.Rating, &product.Color)
+
+	if err := sql.Scan(&product.ID, &product.Name, &product.Genetics, &product.Star, &product.Type, &product.Stock, &product.Thc_rate, &product.Cbd_rate, &product.Price, &product.Image, &product.Description, &product.Rating, &product.Color); err != nil {
+		fmt.Println(err)
 		return nil, err
+	}
+
+	product.Aspects = []Aspect{}
+	sqlAspect, err := db.DB.Query(`
+			SELECT id, name
+			FROM aspect a JOIN has_aspect h ON a.id = h.aspect_id
+			WHERE product_id = $1
+		`, product.ID)
+	defer sqlAspect.Close()
+
+	if err != nil {
+		fmt.Println("sql::", err)
+	}
+
+	for sqlAspect.Next() {
+		var aspect Aspect
+		sqlAspect.Scan(&aspect.ID, &aspect.Name)
+		product.Aspects = append(product.Aspects, aspect)
+	}
+
+	product.Flavors = []Flavor{}
+	sqlFlavor, err := db.DB.Query(`
+			SELECT id, name
+			FROM flavor a JOIN has_flavor h ON a.id = h.flavor_id
+			WHERE product_id = $1
+		`, product.ID)
+	defer sqlFlavor.Close()
+
+	if err != nil {
+		fmt.Println("sql::", err)
+		return nil, err
+	}
+
+	for sqlFlavor.Next() {
+		var flavor Flavor
+		sqlFlavor.Scan(&flavor.ID, &flavor.Name)
+		product.Flavors = append(product.Flavors, flavor)
+	}
+
+	product.IdealFors = []IdealFor{}
+	sqlIdeal, err := db.DB.Query(`
+			SELECT id, name
+			FROM ideal_for a JOIN is_ideal_for h ON a.id = h.ideal_for_id
+			WHERE product_id = $1
+		`, product.ID)
+	defer sqlIdeal.Close()
+
+	if err != nil {
+		fmt.Println("sql::", err)
+		return nil, err
+	}
+
+	for sqlIdeal.Next() {
+		var idealFor IdealFor
+		err := sqlIdeal.Scan(&idealFor.ID, &idealFor.Name)
+		if err != nil {
+			fmt.Println(err)
+			return nil, err
+		}
+		product.IdealFors = append(product.IdealFors, idealFor)
+	}
+
+	product.Effects = []Effet{}
+	sqlEff, err := db.DB.Query(`
+			SELECT id, name
+			FROM effet a JOIN has_effect h ON a.id = h.effect_id
+			WHERE product_id = $1
+		`, product.ID)
+	defer sqlEff.Close()
+
+	if err != nil {
+		fmt.Println("sql::", err)
+		return nil, err
+	}
+
+	for sqlEff.Next() {
+		var effect Effet
+		sqlEff.Scan(&effect.ID, &effect.Name)
+		product.Effects = append(product.Effects, effect)
 	}
 
 	return &product, nil
