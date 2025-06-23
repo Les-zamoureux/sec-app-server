@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -131,9 +132,9 @@ func initUserRoutes(r *gin.Engine) {
 		}
 
 		fmt.Println("User authenticated:", user)
-		
+
 		if err != nil {
-			c.JSON(http.StatusInternalServerError,  gin.H{"error": "Error getting the user"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting the user"})
 			return
 		}
 
@@ -188,7 +189,7 @@ func initUserRoutes(r *gin.Engine) {
 		c.JSON(http.StatusOK, gin.H{"message": "User removed successfully"})
 	}))
 
-	r.GET("/user",  m.AdminAuthenticated(func (c *gin.Context) {
+	r.GET("/user", m.AdminAuthenticated(func(c *gin.Context) {
 		users, err := mod.GetAllUser()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
@@ -231,7 +232,7 @@ func initUserRoutes(r *gin.Engine) {
 
 	r.PUT("/user/change-password", m.Authenticated(func(c *gin.Context) {
 		userMail, _ := controller.GetUserEmailFromGinContext(c)
-		user, _ := mod.GetUserByEmailOrUsername(userMail,  true)
+		user, _ := mod.GetUserByEmailOrUsername(userMail, true)
 		var json struct {
 			OldPassword string `json:"oldPassword"`
 			NewPassword string `json:"newPassword"`
@@ -392,7 +393,7 @@ func initProductRoutes(r *gin.Engine) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{
-			"message": "Product added successfully",
+			"message":   "Product added successfully",
 			"productID": productID,
 		})
 	}))
@@ -427,7 +428,26 @@ func initProductRoutes(r *gin.Engine) {
 			return
 		}
 
-		path := "uploads/" + file.Filename
+		// Répertoire de destination
+		uploadDir := "uploads/"
+		filename := file.Filename
+		path := uploadDir + filename
+
+		// Vérifie si le fichier existe déjà, et génère un nom unique si besoin
+		i := 1
+		ext := filepath.Ext(filename)
+		name := filename[:len(filename)-len(ext)]
+
+		for {
+			if _, err := os.Stat(path); os.IsNotExist(err) {
+				break
+			}
+			filename = fmt.Sprintf("%s_%d%s", name, i, ext)
+			path = uploadDir + filename
+			i++
+		}
+
+		// Sauvegarde le fichier
 		if err := c.SaveUploadedFile(file, path); err != nil {
 			c.JSON(500, gin.H{"error": "Échec de l'enregistrement de l'image"})
 			return
@@ -439,7 +459,10 @@ func initProductRoutes(r *gin.Engine) {
 			return
 		}
 
-		c.JSON(200, gin.H{"message": "Image mise à jour avec succès", "path": "/" + path})
+		c.JSON(200, gin.H{
+			"message": "Image mise à jour avec succès",
+			"path":    "/" + path,
+		})
 	})
 
 	r.DELETE("/product/:id", m.AdminAuthenticated(func(c *gin.Context) {
@@ -500,7 +523,7 @@ func initFAQRoutes(r *gin.Engine) {
 		c.JSON(http.StatusOK, gin.H{"message": "FAQ added successfully"})
 	}))
 
-	r.PUT("/faq/:id",  m.AdminAuthenticated(func (c *gin.Context) {
+	r.PUT("/faq/:id", m.AdminAuthenticated(func(c *gin.Context) {
 		faqID := c.Param("id")
 		var faq struct {
 			Question string `json:"question" binding:"required"`
