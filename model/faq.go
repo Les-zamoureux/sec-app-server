@@ -76,3 +76,20 @@ func DeleteFAQ(id string) error {
 
 	return nil
 }
+
+func UpdateFAQ(id, question, answer string) error {
+	sql, err := db.DB.Prepare("UPDATE faq_question SET question=$1, answer=$2 WHERE id = $3")
+	if err != nil {
+		fmt.Println("Error preparing FAQ update:", err)
+		return err
+	}
+	defer sql.Close()
+
+	_, err = sql.Exec(question, answer, id)
+	if err != nil {
+		fmt.Println("Error executing FAQ update:", err)
+		return err
+	}
+
+	return nil
+}

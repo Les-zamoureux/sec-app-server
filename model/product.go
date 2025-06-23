@@ -17,6 +17,7 @@ type Product struct {
 	Price       float64 `json:"price"`
 	Description string  `json:"description"`
 	Color       string  `json:"color"`
+	ImagePath string `json:"image_path"`
 }
 
 func GetProducts() ([]Product, error) {

@@ -485,6 +485,27 @@ func initFAQRoutes(r *gin.Engine) {
 		c.JSON(http.StatusOK, gin.H{"message": "FAQ added successfully"})
 	}))
 
+	r.PUT("/faq/:id",  m.AdminAuthenticated(func (c *gin.Context) {
+		faqID := c.Param("id")
+		var faq struct {
+			Question string `json:"question" binding:"required"`
+			Answer   string `json:"answer" binding:"required"`
+		}
+
+		if err := c.ShouldBindJSON(&faq); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+			return
+		}
+
+		err := mod.UpdateFAQ(faqID, faq.Question, faq.Answer)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update FAQ"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "FAQ updated successfully"})
+
+	}))
+
 	r.DELETE("/faq/:id", m.AdminAuthenticated(func(c *gin.Context) {
 		id := c.Param("id")
 		if id == "" {
