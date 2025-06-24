@@ -13,3 +13,11 @@ MAIL_PASSWORD=a5ab5ae5e77fc0
 MAIL_FROM=no-reply@myweed.com
 MAIL_CONTENT_TYPE=text/html
 ```
+
+L'host, le port, le username et le password correspondent aux identifiant mailtrap (serveur de test de mail pour le développement)
+
+Afin de lancer le server :
+```
+go get
+go run main.go
+```
